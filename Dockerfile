@@ -1,15 +1,18 @@
-FROM golang:1.14.0 as build
+FROM golang:1.19 as build
 
-COPY . /src
-RUN set -ex \
-    && cd /src \
-    && CGO_ENABLED=0 go build -o /bin/prometheus-exporter
+WORKDIR /go/src/app
 
-FROM alpine:latest
+COPY . .
+
+RUN go mod download
+RUN CGO_ENABLED=0 go install -trimpath -ldflags "-s -w"
+
+
+FROM gcr.io/distroless/base-debian11
 MAINTAINER CMogilko <cmogilko@gmail.com>
 
-COPY --from=build /bin/prometheus-exporter /bin/prometheus-exporter
+COPY --from=build /go/bin/prometheus-exporter /sbin/prometheus-exporter
 
 USER nobody
 EXPOSE     9055
-ENTRYPOINT [ "/bin/prometheus-exporter" ]
+ENTRYPOINT [ "/sbin/prometheus-exporter" ]
